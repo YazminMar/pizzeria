@@ -300,3 +300,159 @@
                 <tr>
                     <td>Operaciones BLUE</td>
                     <td id="table-ventas">$0.00</td>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ========================================================== -->
+    <!-- SCRIPT CON LA LÓGICA DE BLOQUES, TICKETS Y ESTADOS         -->
+    <!-- ========================================================== -->
+    <script>
+        // 1. PRODUCTOS DE CADA CATEGORÍA
+        const bebidas = [
+            { nombre: 'Refresco 600ml', precio: 35 },
+            { nombre: 'Agua Ciel 1L', precio: 25 },
+            { nombre: 'Jugo del Valle', precio: 30 }
+        ];
+
+        const extras = [
+            { nombre: 'Queso Extra', precio: 25 },
+            { nombre: 'Papas a la Francesa', precio: 50 },
+            { nombre: 'Aderezo Ranch', precio: 15 }
+        ];
+
+        const pizzas = [
+            { nombre: 'Pepperoni', precio: 120 },
+            { nombre: 'Hawaiana', precio: 130 },
+            { nombre: 'Mexicana', precio: 140 }
+        ];
+
+        let currentSizePrice = 0;
+        let selectedItems = [];
+        let selectedService = 'Comer Aquí';
+        let orderCount = 1;
+
+        // 2. MOSTRAR BOTONES INTERACTIVOS EN PANTALLA
+        function initMenu() {
+            renderSection('pizza-container', pizzas);
+            renderSection('bebida-container', bebidas);
+            renderSection('extra-container', extras);
+        }
+
+        function renderSection(containerId, items) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            container.innerHTML = items.map(item => `
+                <button class="btn-select" onclick="toggleItem('${item.nombre}', ${item.precio}, this)">
+                    ${item.nombre} (+$${item.precio})
+                </button>
+            `).join('');
+        }
+
+        // 3. SELECCIÓN DE BLOQUES Y CÁLCULO DEL TOTAL
+        function toggleItem(nombre, precio, btn) {
+            btn.classList.toggle('selected');
+            const index = selectedItems.findIndex(i => i.nombre === nombre);
+            
+            if (index > -1) {
+                selectedItems.splice(index, 1);
+            } else {
+                selectedItems.push({ nombre, precio });
+            }
+            updateLiveTotal();
+        }
+
+        function selectSize(size, extraPrice) {
+            currentSizePrice = extraPrice;
+            document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('selected'));
+            event.target.classList.add('selected');
+            updateLiveTotal();
+        }
+
+        function selectService(service) {
+            selectedService = service;
+            document.querySelectorAll('.service-btn').forEach(b => b.classList.remove('selected'));
+            event.target.classList.add('selected');
+        }
+
+        function updateLiveTotal() {
+            const qty = parseInt(document.getElementById('order-qty').value) || 1;
+            const itemsTotal = selectedItems.reduce((sum, item) => sum + item.precio, 0);
+            const total = (itemsTotal + currentSizePrice) * qty;
+            document.getElementById('live-total').innerText = total.toFixed(2);
+        }
+
+        // 4. CAMBIAR ENTRE PESTAÑAS (INTERFACES)
+        function switchPage(pageId) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            
+            document.getElementById(`page-${pageId}`).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // 5. ENVIAR A COCINA Y FLUJO DE TICKETS (PREPARAR -> COBRAR -> ENTREGAR)
+        function sendToKitchen() {
+            if (selectedItems.length === 0) {
+                alert("Por favor selecciona al menos un producto.");
+                return;
+            }
+
+            const total = document.getElementById('live-total').innerText;
+            const itemsList = selectedItems.map(i => i.nombre).join(', ');
+            
+            const cardHTML = `
+                <div class="order-card" id="order-${orderCount}">
+                    <h4>Orden #${orderCount}</h4>
+                    <p><strong>Detalle:</strong> ${itemsList}</p>
+                    <p><strong>Servicio:</strong> ${selectedService}</p>
+                    <p><strong>Total:</strong> $${total}</p>
+                    <button onclick="moveOrder(${orderCount})">Marcar como Listo</button>
+                </div>
+            `;
+
+            document.getElementById('col-preparar').innerHTML += cardHTML;
+            alert(`¡Pedido #${orderCount} enviado a Cocina!`);
+            
+            orderCount++;
+            resetForm();
+        }
+
+        function moveOrder(id) {
+            const card = document.getElementById(`order-${id}`);
+            if (card) {
+                card.querySelector('button').outerHTML = `<button onclick="moveToTicket(${id})">Generar Ticket y Cobrar</button>`;
+                document.getElementById('col-listo').appendChild(card);
+            }
+        }
+
+        function moveToTicket(id) {
+            const card = document.getElementById(`order-${id}`);
+            if (card) {
+                document.getElementById('col-entregado').appendChild(card);
+                card.querySelector('button').remove();
+
+                document.getElementById('ticket-area').innerHTML = `
+                    <div class="ticket">
+                        <h2 style="text-align:center;">BLUE PIZZA</h2>
+                        <hr style="margin: 10px 0;">
+                        <p>${card.innerHTML}</p>
+                        <hr style="margin: 10px 0;">
+                        <h3 style="text-align:center; color: green;">¡COBRADO Y ENTREGADO!</h3>
+                    </div>
+                `;
+            }
+        }
+
+        function resetForm() {
+            selectedItems = [];
+            document.querySelectorAll('.grid-buttons .btn-select').forEach(b => b.classList.remove('selected'));
+            updateLiveTotal();
+        }
+
+        window.onload = initMenu;
+    </script>
+</body>
+</html>
